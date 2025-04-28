@@ -157,7 +157,8 @@ public class EditLoreView extends View {
 
     private boolean canAdvance(Context context) {
         final int currentPage = paginationState.get(context).currentPageIndex();
-        final int linesCount = getLines(context).size();
+        final List<Component> lines = getLines(context);
+        final int linesCount = lines == null ? 0 : lines.size();
         return linesCount > (currentPage + 1) * Constants.LINES_PER_PAGE;
     }
 
