@@ -1,6 +1,7 @@
 package fr.lacaleche.ie.views;
 
 import com.google.common.collect.ImmutableMap;
+import fr.lacaleche.ie.Constants;
 import me.devnatan.inventoryframework.AnvilInput;
 import me.devnatan.inventoryframework.View;
 import me.devnatan.inventoryframework.ViewConfigBuilder;
@@ -12,20 +13,23 @@ import me.devnatan.inventoryframework.state.MutableState;
 import me.devnatan.inventoryframework.state.State;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 import java.util.function.BiFunction;
 
-public abstract class AbstractAnvilView extends View {
+/**
+ * Base class for all anvil-based views that process text input
+ * @param <T> The type of data being processed by the view
+ */
+public abstract class AbstractAnvilView<T> extends View {
 
     protected final MutableState<ItemStack> itemState = initialState("item");
-    protected final State<BiFunction<Context, Component, ItemStack>> callback = initialState("callback");
-    private final State<String> titleState = initialState("title");
+    protected final State<BiFunction<Context, T, ItemStack>> callback = initialState("callback");
+    protected final State<String> titleState = initialState("title");
 
-    final AnvilInput anvilInput = AnvilInput.createAnvilInput();
+    protected final AnvilInput anvilInput = AnvilInput.createAnvilInput();
 
     @Override
     public void onInit(@NotNull ViewConfigBuilder config) {
@@ -43,23 +47,34 @@ public abstract class AbstractAnvilView extends View {
     public void onFirstRender(@NotNull RenderContext render) {
         render.resultSlot()
                 .onClick((ctx) -> {
-                    final String newName = anvilInput.get(ctx);
+                    final String newValue = anvilInput.get(ctx);
 
-                    if (newName == null || newName.isEmpty()) {
-                        render.getPlayer().sendMessage(Component.text("Please enter a valid name.").color(NamedTextColor.RED));
+                    if (newValue == null || newValue.isEmpty()) {
+                        render.getPlayer().sendMessage(Constants.PLEASE_ENTER_VALID_NAME);
                         return;
                     }
 
-                    ctx.back(getStates(ctx, newName));
+                    ctx.back(getStates(ctx, newValue));
                 });
     }
 
-    protected ItemStack resultClickCallback(Context ctx, String newName) {
-        return callback.get(ctx).apply(ctx, MiniMessage.miniMessage().deserialize(newName));
-    }
+    /**
+     * Process the input and apply it to the item
+     * 
+     * @param ctx The context
+     * @param inputValue The user input string
+     * @return The modified item
+     */
+    protected abstract ItemStack processInput(Context ctx, String inputValue);
 
-    protected Map<String, Object> getStates(Context ctx, String newName) {
-        return ImmutableMap.of("item", resultClickCallback(ctx, newName));
+    /**
+     * Get states to pass back to the parent view
+     * 
+     * @param ctx The context
+     * @param inputValue The user input string
+     * @return A map of states
+     */
+    protected Map<String, Object> getStates(Context ctx, String inputValue) {
+        return ImmutableMap.of("item", processInput(ctx, inputValue));
     }
-
 }

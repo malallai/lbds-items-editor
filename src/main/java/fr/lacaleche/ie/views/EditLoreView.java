@@ -1,7 +1,6 @@
 package fr.lacaleche.ie.views;
 
-import com.google.common.collect.ImmutableMap;
-import fr.lacaleche.ie.Utils;
+import fr.lacaleche.ie.Constants;
 import fr.lacaleche.ie.utils.ItemBuilder;
 import me.devnatan.inventoryframework.View;
 import me.devnatan.inventoryframework.ViewConfigBuilder;
@@ -22,6 +21,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
+/**
+ * View for editing an item's lore (multiple lines)
+ */
 public class EditLoreView extends View {
 
     private final MutableState<ItemStack> itemState = initialState("item");
@@ -36,90 +38,127 @@ public class EditLoreView extends View {
     @Override
     public void onInit(@NotNull ViewConfigBuilder config) {
         config.cancelOnClick()
-                .title("test")
-                .size(5)
-                .layout("OOOOOOOOO", "OOOOOOOOO", "OOOOOOOOO", "P#######N", "AE  V   C");
+                .title(Constants.EDIT_LORE_TITLE)
+                .size(Constants.EDIT_LORE_LAYOUT.length)
+                .layout(Constants.EDIT_LORE_LAYOUT);
     }
 
     @Override
     public void onFirstRender(@NotNull RenderContext render) {
         final Pagination pagination = paginationState.get(render);
+        final ItemBuilder backgroundItem = ItemBuilder.DARK_GRAY_BACKGROUND;
 
-        render.layoutSlot('#', ItemBuilder.DARK_GRAY_BACKGROUND.build());
-        render.layoutSlot('P', ItemBuilder.DARK_GRAY_BACKGROUND.build());
-        render.layoutSlot('N', ItemBuilder.DARK_GRAY_BACKGROUND.build());
+        render.layoutSlot('#', backgroundItem.build());
+        render.layoutSlot('P', backgroundItem.build());
+        render.layoutSlot('N', backgroundItem.build());
 
-        render.layoutSlot('P', new ItemBuilder(Material.ARROW).name(Component.text("Previous", NamedTextColor.YELLOW)).build())
+        setupNavigationButtons(render, pagination);
+        setupActionButtons(render);
+    }
+
+    private void setupNavigationButtons(RenderContext render, Pagination pagination) {
+        // Previous page button
+        render.layoutSlot('P', new ItemBuilder(Material.ARROW)
+                .name(Constants.PREVIOUS_TEXT)
+                .build())
                 .displayIf(() -> canBack(render))
                 .updateOnStateChange(paginationState)
                 .onClick((ctx) -> pagination.back());
 
-        render.layoutSlot('A', new ItemBuilder(Material.YELLOW_CONCRETE).name(Component.text("Add", NamedTextColor.YELLOW)).build())
-                .onClick((click) -> {
-                    click.openForPlayer(EditLineView.class, Utils.buildStates(
-                            click, "New Line",
-                            itemState,
-                            (BiFunction<Context, Component, ItemStack>) (ctx, newLine) ->
-                                    new ItemBuilder(itemState.get(ctx).clone())
-                                            .addLine(newLine)
-                                            .build(),
-                            ImmutableMap.of("editLoreCallback", callback.get(click))
-                    ));
-                });
-
-        render.layoutSlot('E', new ItemBuilder(Material.PURPLE_CONCRETE).name(Component.text("Add empty line", NamedTextColor.YELLOW)).build())
-                .onClick((click) -> {
-                    final List<Component> newLore = new ArrayList<>(getLines(click));
-                    newLore.add(Component.empty());
-                    itemState.get(click).lore(newLore);
-                    updatePagination(click);
-                });
-
-        render.layoutSlot('V', new ItemBuilder(Material.GREEN_CONCRETE).name(Component.text("Validate", NamedTextColor.GREEN)).build())
-                        .onClick((ctx) -> ctx.back(callback.get(ctx).apply(ctx, getLines(ctx))));
-
-        render.layoutSlot('C', new ItemBuilder(Material.RED_CONCRETE).name(Component.text("Cancel", NamedTextColor.RED)).build())
-                .displayIf(Context::canBack)
-                .onClick(Context::back);
-
-        render.layoutSlot('N', new ItemBuilder(Material.ARROW).name(Component.text("Next", NamedTextColor.YELLOW)).build())
+        // Next page button
+        render.layoutSlot('N', new ItemBuilder(Material.ARROW)
+                .name(Constants.NEXT_TEXT)
+                .build())
                 .displayIf(() -> canAdvance(render))
                 .updateOnStateChange(paginationState)
                 .onClick((ctx) -> pagination.advance());
     }
 
+    private void setupActionButtons(RenderContext render) {
+        // Add line button
+        render.layoutSlot('A', new ItemBuilder(Material.YELLOW_CONCRETE)
+                .name(Constants.ADD_TEXT)
+                .build())
+                .onClick(this::handleAddLineClick);
+
+        // Add empty line button
+        render.layoutSlot('E', new ItemBuilder(Material.PURPLE_CONCRETE)
+                .name(Constants.ADD_EMPTY_LINE_TEXT)
+                .build())
+                .onClick(this::handleAddEmptyLineClick);
+
+        // Validate button
+        render.layoutSlot('V', new ItemBuilder(Material.GREEN_CONCRETE)
+                .name(Constants.VALIDATE_TEXT)
+                .build())
+                .onClick((ctx) -> ctx.back(callback.get(ctx).apply(ctx, getLines(ctx))));
+
+        // Cancel button
+        render.layoutSlot('C', new ItemBuilder(Material.RED_CONCRETE)
+                .name(Constants.CANCEL_TEXT)
+                .build())
+                .displayIf(Context::canBack)
+                .onClick(Context::back);
+    }
+
+    private void handleAddLineClick(SlotClickContext click) {
+        ViewManager.openLineEditor(
+                click,
+                Constants.NEW_LINE_TITLE,
+                itemState.get(click),
+                (ctx, newLine) -> new ItemBuilder(itemState.get(ctx).clone())
+                        .addLine(newLine)
+                        .build(),
+                null,
+                callback.get(click)
+        );
+    }
+
+    private void handleAddEmptyLineClick(SlotClickContext click) {
+        final List<Component> newLore = new ArrayList<>(getLines(click));
+        newLore.add(Component.empty());
+        itemState.get(click).lore(newLore);
+        updatePagination(click);
+    }
+
     private void handlePaginationItemClick(SlotClickContext click, int index, ItemStack value) {
         if (click.isMiddleClick()) {
-            List<Component> newLore = new ArrayList<>(getLines(click));
-            newLore.remove(index - 1);
-
-            itemState.get(click).lore(newLore);
-            updatePagination(click);
-            return ;
+            removeLoreLine(click, index);
+            return;
         }
 
-        click.openForPlayer(EditLineView.class, Utils.buildStates(
-                click, "Edit Line",
-                itemState,
-                (BiFunction<Context, Component, ItemStack>) (ctx, editedLine) -> {
+        editLoreLine(click, index, value);
+    }
+
+    private void removeLoreLine(SlotClickContext click, int index) {
+        List<Component> newLore = new ArrayList<>(getLines(click));
+        newLore.remove(index - 1);
+
+        itemState.get(click).lore(newLore);
+        updatePagination(click);
+    }
+
+    private void editLoreLine(SlotClickContext click, int index, ItemStack value) {
+        ViewManager.openLineEditor(
+                click,
+                Constants.EDIT_LINE_TITLE,
+                itemState.get(click),
+                (ctx, editedLine) -> {
                     List<Component> newLines = new ArrayList<>(getLines(ctx));
                     newLines.set(index - 1, editedLine);
                     return new ItemBuilder(itemState.get(ctx).clone())
                             .lore(newLines)
                             .build();
                 },
-                ImmutableMap.of(
-                        "editLoreCallback", callback.get(click),
-                        "line", value.getItemMeta().displayName()
-                )
-        ));
+                value.getItemMeta().displayName(),
+                callback.get(click)
+        );
     }
 
     private boolean canAdvance(Context context) {
         final int currentPage = paginationState.get(context).currentPageIndex();
         final int linesCount = getLines(context).size();
-        final int linesPerPage = 27;
-        return linesCount > (currentPage + 1) * linesPerPage;
+        return linesCount > (currentPage + 1) * Constants.LINES_PER_PAGE;
     }
 
     private boolean canBack(Context context) {
@@ -134,32 +173,35 @@ public class EditLoreView extends View {
     private List<ItemStack> getItems(Context context) {
         List<Component> lore = getLines(context);
         if (lore == null || lore.isEmpty()) {
-            return List.of(new ItemBuilder(Material.RED_CONCRETE).name(Component.text("Nothing to show.", NamedTextColor.RED)).build());
+            return List.of(new ItemBuilder(Material.RED_CONCRETE)
+                    .name(Component.text("Nothing to show.", NamedTextColor.RED))
+                    .build());
         }
 
         final AtomicInteger index = new AtomicInteger(0);
         final int currentPage = paginationState.get(context).currentPageIndex();
-        final int linesPerPage = 27;
         return lore.stream()
-                .map(item -> new ItemBuilder(Material.PAPER)
-                        .amount(index.incrementAndGet())
-                        .name(item)
-                        .lore(List.of(
-                                Component.text("Line #" + index.get(), NamedTextColor.GRAY),
-                                Component.empty(),
-                                Component.text("Click to edit", NamedTextColor.YELLOW),
-                                Component.text("Middle click to remove", NamedTextColor.RED)
-                        ))
-                        .build()
-                )
-                .skip((long) currentPage * linesPerPage)
+                .map(item -> createLoreLineItem(index.incrementAndGet(), item))
+                .skip((long) currentPage * Constants.LINES_PER_PAGE)
                 .toList();
+    }
+    
+    private ItemStack createLoreLineItem(int index, Component content) {
+        return new ItemBuilder(Material.PAPER)
+                .amount(index)
+                .name(content)
+                .lore(List.of(
+                        Component.text("Line #" + index, NamedTextColor.GRAY),
+                        Component.empty(),
+                        Constants.CLICK_TO_EDIT,
+                        Constants.MIDDLE_CLICK_TO_REMOVE
+                ))
+                .build();
     }
 
     @Override
     public void onUpdate(@NotNull Context update) {
-        final Pagination pagination = paginationState.get(update);
-        pagination.switchTo(pagination.currentPageIndex());
+        updatePagination(update);
     }
 
     @Override
@@ -171,5 +213,4 @@ public class EditLoreView extends View {
         final Pagination pagination = paginationState.get(context);
         pagination.switchTo(pagination.currentPageIndex());
     }
-
 }
