@@ -1,5 +1,6 @@
 package fr.lacaleche.ie.commands;
 
+import com.google.common.collect.ImmutableMap;
 import fr.lacaleche.ie.views.IeMainView;
 import me.devnatan.inventoryframework.ViewFrame;
 import net.kyori.adventure.text.Component;
@@ -36,7 +37,7 @@ public class IeCommand implements CommandExecutor {
             item = new ItemStack(material);
         }
 
-        this.viewFrame.open(IeMainView.class, player, item);
+        this.viewFrame.open(IeMainView.class, player, ImmutableMap.of("item", item.clone()));
         return true;
     }
 

@@ -1,8 +1,7 @@
 package fr.lacaleche.ie;
 
 import fr.lacaleche.ie.commands.IeCommand;
-import fr.lacaleche.ie.views.EditNameView;
-import fr.lacaleche.ie.views.IeMainView;
+import fr.lacaleche.ie.views.*;
 import me.devnatan.inventoryframework.AnvilInputFeature;
 import me.devnatan.inventoryframework.ViewFrame;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -13,9 +12,10 @@ public class ItemsEditor extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        System.out.printf("Debug: %b%n", Boolean.parseBoolean(System.getProperty("me.devnatan.inventoryframework.debug", "false")));
         ViewFrame viewFrame = ViewFrame.create(this)
                 .install(AnvilInputFeature.AnvilInput)
-                .with(new EditNameView(), new IeMainView())
+                .with(new IeMainView(), new EditLineView(), new EditItemNameView(), new EditLoreView())
                 .register();
 
         Objects.requireNonNull(getCommand("itemseditor")).setExecutor(new IeCommand(viewFrame));

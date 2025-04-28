@@ -2,13 +2,13 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
-paper = "1.19.4-R0.1-SNAPSHOT"
+paper = "1.20.1-R0.1-SNAPSHOT"
 shadow = "8.3.6"
 inventoryFramework = "3.2.0"
 
 [libraries]
 paper-api = { group = "io.papermc.paper", name = "paper-api", version.ref = "paper" }
-inventory-framework-paper = { group = "me.devnatan", name = "inventory-framework-platform-paper", version.ref = "inventoryFramework" }
+inventory-framework = { group = "me.devnatan", name = "inventory-framework-platform-bukkit", version.ref = "inventoryFramework" }
 inventory-framework-anvil-input = { group = "me.devnatan", name = "inventory-framework-anvil-input", version.ref = "inventoryFramework" }
 
 [plugins]

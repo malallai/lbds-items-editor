@@ -19,14 +19,13 @@ repositories {
 
 dependencies {
     compileOnly(libs.paper.api)
-    implementation(libs.inventory.framework.paper)
-    implementation(libs.inventory.framework.anvil.input)
+    compileOnly(libs.inventory.framework)
+    compileOnly(libs.inventory.framework.anvil.input)
 }
 
 tasks {
     shadowJar {
         archiveClassifier.set("")
-        relocate("me.devnatan.inventoryframework", "${project.group}.shaded.inventoryframework")
     }
     
     build {
@@ -34,14 +33,15 @@ tasks {
     }
 
     runServer {
-        minecraftVersion("1.19.4")
+        minecraftVersion("1.20.1")
     }
 }
 
 bukkitPluginYaml {
     main = "fr.lacaleche.ie.ItemsEditor"
     load = BukkitPluginYaml.PluginLoadOrder.STARTUP
-    apiVersion = "1.19"
+    apiVersion = "1.20"
+    depend = listOf("InventoryFramework")
     commands {
         register("itemseditor") {
             description = "ItemsEditor command"
@@ -52,5 +52,5 @@ bukkitPluginYaml {
 }
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 }
